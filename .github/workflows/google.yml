@@ -9,11 +9,8 @@ on:
     - "*"
 
 env:
-  FRONTEND_IMAGE: todo-app
-  FRONTEND_SERVICE: todo-app
-  BACKEND_IMAGE: todo-backend
-  BACKEND_SERVICE: todo-backend
-  BROADCASTER_IMAGE: todo-broadcaster
+  PINGPONG_IMAGE: pingpong
+  LOGOUTPUT_IMAGE: logoutput
   BRANCH: ${{ github.ref_name }}
   
 jobs:
@@ -26,7 +23,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      
+
+    - name: Set up Git
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+
     - id: "auth"
       uses: google-github-actions/auth@v2
       with:
@@ -49,36 +51,26 @@ jobs:
         project_id: ${{ secrets.PROJECT_ID }}
 
     # Build the Docker images
-    - name: Build Backend Docker image
+    - name: Build pingpong Docker image
       run: |-
         docker build \
-          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BACKEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
-          "./todo-project/${{ env.BACKEND_IMAGE }}"
+          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
+          "./todo-project/${{ env.PINGPONG_IMAGE }}"
 
-    - name: Build Broadcaster Docker image
+    - name: Build logoutput Docker image
       run: |-
         docker build \
-          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BROADCASTER_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
-          "./todo-project/${{ env.BROADCASTER_IMAGE }}"
-  
-    - name: Build Frontend Docker image
-      run: |-
-        docker build \
-          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.FRONTEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
-          "./todo-project/${{ env.FRONTEND_IMAGE }}"
+          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
+          "./todo-project/${{ env.LOGOUTPUT_IMAGE }}"
   
     # Push the Docker images to Google Container Registry
-    - name: Publish Backend Docker image
+    - name: Publish pingpong Docker image
       run: |-
-        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BACKEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
 
-    - name: Publish Broadcaster Docker image
+    - name: Publish logoutput Docker image
       run: |-
-        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BROADCASTER_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
-
-    - name: Publish Frontend Docker image
-      run: |-
-        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.FRONTEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}"
+        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}"
       
     - name: Install Kustomize
       run: |-
@@ -87,25 +79,35 @@ jobs:
     
     - name: Deploy
       run: |-
-        mkdir kustomize-temp
-        cp -r "./todo-project/manifests/." kustomize-temp/
-        cd kustomize-temp
-        
+        cd "./manifests/base"
+
         NAMESPACE=todo-${GITHUB_REF#refs/heads/}
         if [ "$NAMESPACE" == "main" ]; then
           NAMESPACE=todo-default
         fi
+
         kubectl create namespace $NAMESPACE || true
         kubectl config set-context --current --namespace=$NAMESPACE
         kustomize edit set namespace $NAMESPACE
 
-        kustomize edit set image ${{ env.FRONTEND_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.FRONTEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
-        kustomize edit set image ${{ env.BACKEND_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.BACKEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
-        kustomize edit set image ${{ env.BROADCASTER_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.BROADCASTER_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+        kustomize edit set image ${{ env.PINGPONG_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+        kustomize edit set image ${{ env.LOGOUTPUT_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
         kustomize build . | kubectl apply -f -
         
         # Get the services information
         kubectl get services -o wide
+
+    - name: Commit changes
+      run: |
+        git add .
+        git commit -m "Automated update by GitHub Actions [skip ci]"
+      continue-on-error: true
+
+    - name: Push changes
+      run: |
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   delete-environment:
     name: Delete env
