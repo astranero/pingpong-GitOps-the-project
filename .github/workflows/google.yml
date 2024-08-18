@@ -82,7 +82,10 @@ jobs:
         kustomize edit set image ${{ env.PINGPONG_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
         kustomize edit set image ${{ env.LOGOUTPUT_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
         kustomize build .
-        
+    
+    - name: Remove sensitive files
+      run: |
+        rm -f gha-creds-*.json
 
     - name: Commit changes
       run: |
