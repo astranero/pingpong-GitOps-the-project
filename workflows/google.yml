@@ -1,0 +1,147 @@
+name: Build and Deploy to GKE
+
+on:
+  push:
+    branches:
+    - "*"
+  delete: 
+    branches:
+    - "*"
+
+env:
+  FRONTEND_IMAGE: todo-app
+  FRONTEND_SERVICE: todo-app
+  BACKEND_IMAGE: todo-backend
+  BACKEND_SERVICE: todo-backend
+  BROADCASTER_IMAGE: todo-broadcaster
+  BRANCH: ${{ github.ref_name }}
+  
+jobs:
+  build-publish-deploy:
+    name: Build, Publish and Deploy
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - id: "auth"
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GKE_SA_KEY }}
+      
+    - name: 'Set up Cloud SDK'
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: 'Use gcloud CLI'
+      run: gcloud info
+
+    - name: Docker configuration
+      run: gcloud --quiet auth configure-docker
+      
+    - name: Set up GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ secrets.GKE_CLUSTER }}
+        location: ${{ secrets.GKE_ZONE }}
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Build the Docker images
+    - name: Build Backend Docker image
+      run: |-
+        docker build \
+          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BACKEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
+          "./todo-project/${{ env.BACKEND_IMAGE }}"
+
+    - name: Build Broadcaster Docker image
+      run: |-
+        docker build \
+          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BROADCASTER_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
+          "./todo-project/${{ env.BROADCASTER_IMAGE }}"
+  
+    - name: Build Frontend Docker image
+      run: |-
+        docker build \
+          --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.FRONTEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
+          "./todo-project/${{ env.FRONTEND_IMAGE }}"
+  
+    # Push the Docker images to Google Container Registry
+    - name: Publish Backend Docker image
+      run: |-
+        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BACKEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+
+    - name: Publish Broadcaster Docker image
+      run: |-
+        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.BROADCASTER_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+
+    - name: Publish Frontend Docker image
+      run: |-
+        docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.FRONTEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}"
+      
+    - name: Install Kustomize
+      run: |-
+        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        mv kustomize /usr/local/bin/
+    
+    - name: Deploy
+      run: |-
+        mkdir kustomize-temp
+        cp -r "./todo-project/manifests/." kustomize-temp/
+        cd kustomize-temp
+        
+        NAMESPACE=todo-${GITHUB_REF#refs/heads/}
+        if [ "$NAMESPACE" == "main" ]; then
+          NAMESPACE=todo-default
+        fi
+        kubectl create namespace $NAMESPACE || true
+        kubectl config set-context --current --namespace=$NAMESPACE
+        kustomize edit set namespace $NAMESPACE
+
+        kustomize edit set image ${{ env.FRONTEND_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.FRONTEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+        kustomize edit set image ${{ env.BACKEND_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.BACKEND_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+        kustomize edit set image ${{ env.BROADCASTER_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.BROADCASTER_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
+        kustomize build . | kubectl apply -f -
+        
+        # Get the services information
+        kubectl get services -o wide
+
+  delete-environment:
+    name: Delete env
+    if: github.event_name == 'delete'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - id: "auth"
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GKE_SA_KEY }}
+      
+    - name: 'Set up Cloud SDK'
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: 'Use gcloud CLI'
+      run: gcloud info
+
+    - name: Docker configuration
+      run: gcloud --quiet auth configure-docker
+      
+    - name: Set up GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ secrets.GKE_CLUSTER }}
+        location: ${{ secrets.GKE_ZONE }}
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    - name: Delete namespace
+      run: |-
+        NAMESPACE=${GITHUB_REF#refs/heads/}
+        if [ "$NAMESPACE" != "main" ]; then
+          kubectl delete namespace $NAMESPACE
+        fi
+    
