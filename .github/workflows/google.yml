@@ -84,16 +84,12 @@ jobs:
           NAMESPACE=todo-default
         fi
 
-        kubectl create namespace $NAMESPACE || true
-        kubectl config set-context --current --namespace=$NAMESPACE
         kustomize edit set namespace $NAMESPACE
 
         kustomize edit set image ${{ env.PINGPONG_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
         kustomize edit set image ${{ env.LOGOUTPUT_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
-        kustomize build . | kubectl apply -f -
+        kustomize build .
         
-        # Get the services information
-        kubectl get services -o wide
 
     - name: Commit changes
       run: |

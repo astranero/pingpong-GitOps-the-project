@@ -11,6 +11,7 @@ resources:
 - configmap.yaml
 - pingpong-deployment.yaml
 - logoutput-deployment.yaml
+namespace: pingpong-logoutput
 images:
 - name: logoutput
   newTag: ""
