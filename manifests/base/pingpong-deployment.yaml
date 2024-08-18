@@ -33,5 +33,5 @@ spec:
           - name: DATABASE_URL
             valueFrom:
               secretKeyRef:
-                name: postgres-secret
+                name: postgres-url-secret
                 key: DATABASE_URL
