@@ -15,8 +15,8 @@ namespace: pingpong-logoutput
 images:
 - name: logoutput
   newName: gcr.io/gke-dwe/logoutput
-  newTag: main-a6c1b161af89952302e44a043c9e7e5fb7e8c5cc
+  newTag: main-efca70d66ab6699d9878af63a17bb831eeb00493
 - name: pingpong
   newName: gcr.io/gke-dwe/pingpong
-  newTag: main-a6c1b161af89952302e44a043c9e7e5fb7e8c5cc
+  newTag: main-efca70d66ab6699d9878af63a17bb831eeb00493
 - name: reader
