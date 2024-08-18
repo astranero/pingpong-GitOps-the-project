@@ -3,9 +3,6 @@ kind: Kustomization
 resources:
 - namespace.yaml
 - ingress.yaml
-- postgres-statefulset.yaml
-- postgres-secret.yaml
-- postgres-service.yaml
 - secret.yaml
 - service.yaml
 - postgres-secret.yaml
