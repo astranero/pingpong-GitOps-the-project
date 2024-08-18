@@ -1,0 +1,46 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: logoutput-svc
+  namespace: pingpong-logoutput
+  annotations:
+    cloud.google.com/backend-config: '{"default": "logoutput-backendconfig"}'
+
+spec:
+  selector:
+    app:  logoutput
+  type:  NodePort
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort:  8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: pong-svc
+  namespace: pingpong-logoutput
+  annotations:
+    cloud.google.com/backend-config: '{"default": "logoutput-backendconfig"}'
+spec:
+  selector:
+    app:  pong
+  type:  NodePort
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort:  8081
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: logoutput-backendconfig
+spec:
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /healthz
+

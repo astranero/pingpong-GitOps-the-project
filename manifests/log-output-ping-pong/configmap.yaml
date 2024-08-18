@@ -1,0 +1,9 @@
+apiVersion: v1 
+kind: ConfigMap
+metadata: 
+  namespace: pingpong-logoutput
+  name: logoutput
+data:
+  MESSAGE: "hello world"
+  information.txt: |
+    this text is from file

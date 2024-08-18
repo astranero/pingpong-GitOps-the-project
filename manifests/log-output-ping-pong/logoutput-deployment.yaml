@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logoutput
+  namespace: pingpong-logoutput
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logoutput
+  template:
+    metadata:
+      labels:
+        app: logoutput
+    spec:
+      containers:
+      - name: logoutput-reader
+        image: astranero/reader:2.07.05
+        imagePullPolicy: Always
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          httpGet:
+            path: /healthz
+            port: 3541
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "150m"
+            memory: "200Mi"
+        env:
+          - name: MESSAGE
+            valueFrom:
+              configMapKeyRef:
+                name: logoutput
+                key: MESSAGE
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: DATABASE_URL
+        volumeMounts:
+          - name:  config
+            mountPath:  "/config"
+      volumes:
+        - name: config 
+          configMap: 
+            name: logoutput
+        
