@@ -79,13 +79,6 @@ jobs:
       run: |-
         cd "./manifests/base"
 
-        NAMESPACE=todo-${GITHUB_REF#refs/heads/}
-        if [ "$NAMESPACE" == "main" ]; then
-          NAMESPACE=todo-default
-        fi
-
-        kustomize edit set namespace $NAMESPACE
-
         kustomize edit set image ${{ env.PINGPONG_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
         kustomize edit set image ${{ env.LOGOUTPUT_IMAGE }}="gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
         kustomize build .
