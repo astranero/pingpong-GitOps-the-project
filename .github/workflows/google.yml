@@ -50,20 +50,18 @@ jobs:
         location: ${{ secrets.GKE_ZONE }}
         project_id: ${{ secrets.PROJECT_ID }}
 
-    # Build the Docker images
     - name: Build pingpong Docker image
       run: |-
         docker build \
           --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
-          "./todo-project/${{ env.PINGPONG_IMAGE }}"
+          "./${{ env.PINGPONG_IMAGE }}"
 
     - name: Build logoutput Docker image
       run: |-
         docker build \
           --tag "gcr.io/${{ env.GCP_PROJECT }}/${{ env.LOGOUTPUT_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" \
-          "./todo-project/${{ env.LOGOUTPUT_IMAGE }}"
-  
-    # Push the Docker images to Google Container Registry
+          "./${{ env.LOGOUTPUT_IMAGE }}"
+
     - name: Publish pingpong Docker image
       run: |-
         docker push "gcr.io/${{ env.GCP_PROJECT }}/${{ env.PINGPONG_IMAGE }}:${{ env.BRANCH }}-${{ github.sha }}" 
