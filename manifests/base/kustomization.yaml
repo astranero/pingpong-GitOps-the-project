@@ -14,6 +14,9 @@ resources:
 namespace: pingpong-logoutput
 images:
 - name: logoutput
-  newTag: ""
+  newName: gcr.io/gke-dwe/logoutput
+  newTag: main-a6c1b161af89952302e44a043c9e7e5fb7e8c5cc
+- name: pingpong
+  newName: gcr.io/gke-dwe/pingpong
+  newTag: main-a6c1b161af89952302e44a043c9e7e5fb7e8c5cc
 - name: reader
-  newTag: ""
